@@ -1,0 +1,470 @@
+- id: f0b6697a-7eb4-4925-9f72-ec5eb6318733
+  value: |2-
+
+      name: stage
+              
+      physicalName: 'stg_${parentPhysicalName}'           
+
+      logicalName: '${parentLogicalName} dimension'
+                                                 
+      color: 'orange'                                             # Color of object on diagram (string, green | blue | red | SqlDBM  colors, optional)
+      
+      inheritIdentifiersAs: pk                                    # Inherit primary key columns from parent table(s) as PK or non-PK attributes (string, pk | non-pk | none, default non-pk)
+      inheritAttributes: true                                     # Inherit non-pk columns from parent table(s) (boolean, default true)      
+      
+      defaultColumns:                                             
+        - name: '__load_date'                            
+          logicalName: 'load date'                     
+          dataType: date
+          comment: 'load date'                             
+          nullable: false                                      
+          unique: false                                        
+          default: 'current_date()'                             
+          position: last
+          logic: current_date()
+
+      nodeSettings:                                           
+      - groupName: 'System UI Items'                          
+        groupDesc: 'System UI Items'                          
+        isEnabled: true                                                                            
+      
+        items:                                                                                               
+        - itemType: materialization                              
+          default: 'table'                                       
+          options:                                               
+          - 'table'  
+          - 'view'     
+          isRequired: true                                      
+          isEnabled: true
+        
+        - itemType: prePostSql
+          itemDesc: Pre Create SQL
+          itemName: preCreate
+          default: ''                                                 # Some default SQL text (string, optional)                              
+          isRequired: false                                       
+          isEnabled: true  
+        
+        - itemType: prePostSql
+          itemDesc: Post Create SQL
+          itemName: postCreate
+          default: ''                                                 # Some default SQL text (string, optional)
+          isRequired: false                                       
+          isEnabled: true  
+        
+        - itemType: prePostSql
+          itemDesc: Pre Run SQL
+          itemName: preRun
+          default: ''                                                 # Some default SQL text (string, optional)
+          isRequired: false                                       
+          isEnabled: true  
+        
+        - itemType: prePostSql
+          itemDesc: Post Run SQL
+          itemName: postRun
+          default: ''                                                 # Some default SQL text (string, optional)
+          isRequired: false                                       
+          isEnabled: true  
+                                                
+      - groupName: 'Column settings' 
+        groupDesc: 'Column settings'
+        isEnabled: true
+      
+        items: 
+        - itemType: columnSet                            
+          itemName: PK
+          itemDesc: 'Primary key'
+          isRequired: false
+          isEnabled: true
+      
+        - itemType: columnSet                            
+          itemName: AK
+          itemDesc: 'Alternate key'
+          isRequired: false
+          isEnabled: true
+        
+      - groupName: 'User UI Items'                            
+        groupDesc: 'Optional user configured items'                            
+        isEnabled: true
+                                                                                                  
+        items:           
+
+        - itemType: toggleButton                              
+          itemDesc: 'Rely on constraints'                               
+          itemName: rely_button                                 
+          default: true                                     
+          isEnabled: true
+  name: stage
+  color: '#FC7917'
+  createScript: >
+    {%- if materialization == 'table' %}
+
+    CREATE OR REPLACE TABLE {{ location.databaseName }}.{{ location.schemaName
+    }}.{{name}}
+
+    (
+        {% for col in columns -%}
+            "{{ col.name }}" {{ col.dataType }}          
+            {%- if not col.allowNulls %} NOT NULL
+                {%- if col.defaultValue | length > 0 %} DEFAULT {{ col.defaultValue }}{% endif %}
+            {%- endif %}
+            {%- if col.description | length > 0 %} COMMENT '{{ col.description }}'{% endif %}
+            {%- if not loop.last %}, {% endif %}
+        {% endfor -%} 
+        {% for colSet in columnSets %}
+            {%- if colSet.itemName == 'PK' -%}
+            , CONSTRAINT  {{ colSet.setName }} PRIMARY KEY (
+                {%- for pkCol in colSet.columns -%}
+                    "{{pkCol.name}}"
+                    {%- if not loop.last %}, {% endif -%}
+                {%- endfor -%}
+                )                         
+                {%- if rely_button %} RELY {% endif -%}
+            {%- endif -%}
+        {%- endfor %}
+        {% for colSet in columnSets %}
+            {%- if colSet.itemName == 'AK' -%}
+            , CONSTRAINT  {{ colSet.setName }} UNIQUE (
+                {%- for akCol in colSet.columns -%}
+                    "{{akCol.name}}"
+                    {%- if not loop.last %}, {% endif -%}
+                {%- endfor -%}
+                )                         
+                {%- if rely_button %} RELY {% endif -%}
+            {%- endif -%}
+        {%- endfor %}        
+    )
+
+    {%- if description | length > 0 %} COMMENT = '{{ description }}'{% endif %}
+
+    ;
+        
+    {%- elif materialization == 'view' %}
+
+    CREATE OR REPLACE VIEW {{ location.mapping }}.{{name}}
+
+    (
+        {% for col in columns -%}
+            "{{ col.name }}"
+            {%- if col.description | length > 0 %} COMMENT '{{ col.description }}'{% endif %}
+            {%- if not loop.last %}, {% endif %}
+        {% endfor %}
+    {%- if description | length > 0 %} COMMENT = '{{ description }}'{% endif %}
+
+    )    
+
+    AS
+
+    {{logic}}
+
+    ;
+
+    {%- endif %}
+  runScript: |
+    {% if materialization == 'table' %}
+    INSERT INTO {{ location.mapping }}.{{name}}
+    ( 
+        {%- for col in columns %}
+        "{{ col.name }}"
+        {%- if not loop.last %}, {% endif %}
+        {%- endfor %}
+    )
+    {{ logic }};
+    {%- endif %}
+  isDefault: true
+- id: 2168e0c1-186b-4952-ae36-9b93af4f4a35
+  value: |2-
+
+      name: Persistent Stage
+      physicalName: 'stg_${parentPhysicalName}'           
+      logicalName: '${parentLogicalName} dimension'
+      color: 'purple'                                             # Color of object on diagram (string, green | blue | red | SqlDBM  colors, optional)
+      inheritIdentifiersAs: pk                                    # Inherit primary key columns from parent table(s) as PK or non-PK attributes (string, pk | non-pk | none, default non-pk)
+      inheritAttributes: true                                     # Inherit non-pk columns from parent table(s) (boolean, default true)      
+      defaultColumns:                                             
+      - name: '__load_date'                            
+        logicalName: 'load date'                     
+        dataType: date
+        comment: 'load date'                             
+        nullable: false                                      
+        unique: false                                        
+        default: 'current_date()'                             
+        position: last
+        logic: current_date()
+      nodeSettings:                                           
+      - groupName: 'System UI Items'                          
+        groupDesc: 'System UI Items'                          
+        isEnabled: true                                                                            
+        items:                                                                                               
+        - itemType: materialization                              
+          default: 'table'                                       
+          options:                                               
+          - 'table'  
+          - 'view'     
+          isRequired: true                                      
+          isEnabled: true
+        - itemType: prePostSql
+          itemDesc: Pre Create SQL
+          itemName: preCreate
+          default: ''                                              # Some default SQL text (string, optional)                            
+          isRequired: false                                       
+          isEnabled: true  
+        - itemType: prePostSql
+          itemDesc: Post Create SQL
+          itemName: postCreate
+          default: ''                                              # Some default SQL text (string, optional)                            
+          isRequired: false                                       
+          isEnabled: true  
+        - itemType: prePostSql
+          itemDesc: Pre Run SQL
+          itemName: preRun
+          default: ''                                              # Some default SQL text (string, optional)                              
+          isRequired: false                                       
+          isEnabled: true  
+        - itemType: prePostSql
+          itemDesc: Post Run SQL
+          itemName: postRun
+          default: ''                                              # Some default SQL text (string, optional)                              
+          isRequired: false                                       
+          isEnabled: true  
+      - groupName: 'Column settings' 
+        groupDesc: 'Column settings'
+        isEnabled: true
+        items: 
+        - itemType: columnSet                            
+          itemName: PK
+          itemDesc: 'Primary key'
+          isRequired: false
+          isEnabled: true
+        - itemType: columnSet                            
+          itemName: AK
+          itemDesc: 'Alternate key'
+          isRequired: false
+          isEnabled: true
+      - groupName: 'User UI Items'                            
+        groupDesc: 'Optional user configured items'                            
+        isEnabled: true
+        items:           
+        - itemType: toggleButton                              
+          itemDesc: 'Rely on constraints'                               
+          itemName: rely_button                                 
+          default: true                                     
+          isEnabled: true
+  name: persistent stage
+  color: '#8E44AD'
+  createScript: >
+    {%- if materialization == 'table' %}
+
+    CREATE OR REPLACE TABLE {{ location.databaseName }}.{{ location.schemaName
+    }}.{{name}}
+
+    (
+        {% for col in columns -%}
+            "{{ col.name }}" {{ col.dataType }}          
+            {%- if not col.allowNulls %} NOT NULL
+                {%- if col.defaultValue | length > 0 %} DEFAULT {{ col.defaultValue }}{% endif %}
+            {%- endif %}
+            {%- if col.description | length > 0 %} COMMENT '{{ col.description }}'{% endif %}
+            {%- if not loop.last %}, {% endif %}
+        {% endfor -%} 
+        {% for colSet in columnSets %}
+            {%- if colSet.itemName == 'PK' -%}
+            , CONSTRAINT  {{ colSet.setName }} PRIMARY KEY (
+                {%- for pkCol in colSet.columns -%}
+                    "{{pkCol.name}}"
+                    {%- if not loop.last %}, {% endif -%}
+                {%- endfor -%}
+                )                         
+                {%- if rely_button %} RELY {% endif -%}
+            {%- endif -%}
+        {%- endfor %}
+        {% for colSet in columnSets %}
+            {%- if colSet.itemName == 'AK' -%}
+            , CONSTRAINT  {{ colSet.setName }} UNIQUE (
+                {%- for akCol in colSet.columns -%}
+                    "{{akCol.name}}"
+                    {%- if not loop.last %}, {% endif -%}
+                {%- endfor -%}
+                )                         
+                {%- if rely_button %} RELY {% endif -%}
+            {%- endif -%}
+        {%- endfor %}        
+    )
+
+    {%- if description | length > 0 %} COMMENT = '{{ description }}'{% endif %}
+
+    ;
+        
+    {%- elif materialization == 'view' %}
+
+    CREATE OR REPLACE VIEW {{ location.mapping }}.{{name}}
+
+    (
+        {% for col in columns -%}
+            "{{ col.name }}"
+            {%- if col.description | length > 0 %} COMMENT '{{ col.description }}'{% endif %}
+            {%- if not loop.last %}, {% endif %}
+        {% endfor %}
+    {%- if description | length > 0 %} COMMENT = '{{ description }}'{% endif %}
+
+    )    
+
+    AS
+
+    {{logic}}
+
+    ;
+
+    {%- endif %}
+  runScript: |
+    {%- if materialization == 'table' %}
+    MERGE INTO {{ location.mapping }}.{{ name }} AS TxObject
+    USING (
+        {{ logic }}
+    ) AS TxLogic 
+    ON 
+        {%- for colSet in columnSets %}
+            {%- if colSet.itemName == 'PK' -%}
+                {%- for pkCol in colSet.columns %}
+        TxObject."{{pkCol.name}}" = TxLogic."{{pkCol.name}}"
+        {%- if not loop.last %}  AND  {% endif %}
+                {%- endfor -%}                       
+            {%- endif -%}
+        {%- endfor %}
+
+    WHEN NOT MATCHED THEN
+        INSERT (
+        {%- for col in columns %}
+            "{{ col.name }}"{%- if not loop.last -%}, {%- endif %}
+        {%- endfor -%}
+        )
+        VALUES (
+        {%- for col in columns %}
+            TxLogic."{{ col.name }}" {%- if not loop.last -%}, {%- endif %}
+        {%- endfor -%}
+        )
+
+    WHEN MATCHED THEN
+        UPDATE SET
+        {%- for col in columns %}
+            TxObject."{{ col.name }}" = TxLogic."{{ col.name }}"{%- if not loop.last -%}, {%- endif %}
+        {%- endfor -%}
+    ;
+    {%- endif %}
+  isDefault: true
+- id: 76648a30-5a9b-4549-ba49-31f031ed53bf
+  value: |2-
+
+      name: Persistent Stage
+      physicalName: 'stg_${parentPhysicalName}'           
+      logicalName: '${parentLogicalName} dimension'
+      color: 'purple'                                             # Color of object on diagram (string, green | blue | red | SqlDBM  colors, optional)
+      inheritIdentifiersAs: pk                                    # Inherit primary key columns from parent table(s) as PK or non-PK attributes (string, pk | non-pk | none, default non-pk)
+      inheritAttributes: true                                     # Inherit non-pk columns from parent table(s) (boolean, default true)      
+      defaultColumns:                                             
+      - name: '__load_date'                            
+        logicalName: 'load date'                     
+        dataType: date
+        comment: 'load date'                             
+        nullable: false                                      
+        unique: false                                        
+        default: 'current_date()'                             
+        position: last
+        logic: current_date()
+      nodeSettings:                                           
+      - groupName: 'System UI Items'                          
+        groupDesc: 'System UI Items'                          
+        isEnabled: true                                                                            
+        items:                                                                                               
+        - itemType: materialization                              
+          default: 'table'                                       
+          options:                                               
+          - 'table'  
+          - 'view'     
+          isRequired: true                                      
+          isEnabled: true
+        - itemType: prePostSql
+          itemDesc: Pre Create SQL
+          itemName: preCreate
+          default: ''                                              # Some default SQL text (string, optional)                            
+          isRequired: false                                       
+          isEnabled: true  
+        - itemType: prePostSql
+          itemDesc: Post Create SQL
+          itemName: postCreate
+          default: ''                                              # Some default SQL text (string, optional)                            
+          isRequired: false                                       
+          isEnabled: true  
+        - itemType: prePostSql
+          itemDesc: Pre Run SQL
+          itemName: preRun
+          default: ''                                              # Some default SQL text (string, optional)                              
+          isRequired: false                                       
+          isEnabled: true  
+        - itemType: prePostSql
+          itemDesc: Post Run SQL
+          itemName: postRun
+          default: ''                                              # Some default SQL text (string, optional)                              
+          isRequired: false                                       
+          isEnabled: true  
+      - groupName: 'Column settings' 
+        groupDesc: 'Column settings'
+        isEnabled: true
+        items: 
+        - itemType: columnSet                            
+          itemName: PK
+          itemDesc: 'Primary key'
+          isRequired: false
+          isEnabled: true
+        - itemType: columnSet                            
+          itemName: AK
+          itemDesc: 'Alternate key'
+          isRequired: false
+          isEnabled: true
+      - groupName: 'User UI Items'                            
+        groupDesc: 'Optional user configured items'                            
+        isEnabled: true
+        items:           
+        - itemType: toggleButton                              
+          itemDesc: 'Rely on constraints'                               
+          itemName: rely_button                                 
+          default: true                                     
+          isEnabled: true
+  name: persistent stage_1
+  color: '#8E44AD'
+  createScript: "{% if materialization == 'table' %}\r\nMERGE INTO {{ location.mapping }}.{{ name }} AS TxObject\r\nUSING (\r\n    {{ logic }}\r\n) AS TxLogic \r\nON \r\n    {%- for colSet in columnSets %}\r\n        {%- if colSet.itemName == 'PK' -%}\r\n            {%- for pkCol in colSet.columns %}\r\n    TxObject.{{pkCol.name}} = TxLogic.{{pkCol.name}}\r\n    {%- if not loop.last %}  AND  {% endif %}\r\n            {%- endfor -%}                       \r\n        {%- endif -%}\r\n    {%- endfor %}\r\n\r\nWHEN NOT MATCHED THEN\r\n    INSERT (\r\n    {%- for col in columns %}\r\n        {{ col.name }}{%- if not loop.last -%}, {%- endif %}\r\n    {%- endfor -%}\r\n    )\r\n    VALUES (\r\n    {%- for col in columns %}\r\n        TxLogic.{{ col.name }} {%- if not loop.last -%}, {%- endif %}\r\n    {%- endfor -%}\r\n    )\r\n\r\nWHEN MATCHED THEN\r\n    UPDATE SET\r\n    {%- for col in columns %}\r\n        TxObject.{{ col.name }} = TxLogic.{{ col.name }}{%- if not loop.last -%}, {%- endif %}\r\n    {%- endfor -%}\r\n;\r\n{% endif %}"
+  runScript: |
+    {%- if materialization == 'table' %}
+    MERGE INTO {{ location.mapping }}.{{ name }} AS TxObject
+    USING (
+        {{ logic }}
+    ) AS TxLogic 
+    ON 
+        {%- for colSet in columnSets %}
+            {%- if colSet.itemName == 'PK' -%}
+                {%- for pkCol in colSet.columns %}
+        TxObject."{{pkCol.name}}" = TxLogic."{{pkCol.name}}"
+        {%- if not loop.last %}  AND  {% endif %}
+                {%- endfor -%}                       
+            {%- endif -%}
+        {%- endfor %}
+
+    WHEN NOT MATCHED THEN
+        INSERT (
+        {%- for col in columns %}
+            "{{ col.name }}"{%- if not loop.last -%}, {%- endif %}
+        {%- endfor -%}
+        )
+        VALUES (
+        {%- for col in columns %}
+            TxLogic."{{ col.name }}" {%- if not loop.last -%}, {%- endif %}
+        {%- endfor -%}
+        )
+
+    WHEN MATCHED THEN
+        UPDATE SET
+        {%- for col in columns %}
+            TxObject."{{ col.name }}" = TxLogic."{{ col.name }}"{%- if not loop.last -%}, {%- endif %}
+        {%- endfor -%}
+    ;
+    {%- endif %}
+  isDefault: false

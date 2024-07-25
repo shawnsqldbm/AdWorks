@@ -1,0 +1,17 @@
+sourceId: f41e6079-6913-4668-8b14-8127f73143b5
+name: sometable
+locationId: ea58013c-6ab8-4ac1-afba-643ee1f6e29d
+description: ''
+columns:
+  - name: id
+    dataType: id
+    id: 4083f63f-51c4-449a-993c-d2c8f017ea93
+    allowNulls: false
+    defaultValue: ''
+    description: ''
+  - name: name
+    dataType: varchar(50)
+    id: 87da7511-e41e-4163-b721-70d1339c75f5
+    allowNulls: false
+    defaultValue: ''
+    description: ''

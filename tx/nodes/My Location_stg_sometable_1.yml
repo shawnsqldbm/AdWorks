@@ -1,0 +1,52 @@
+name: stg_sometable_1
+id: 65ded06b-0170-42e9-aee3-9888f02e6d21
+storageLocationId: ea58013c-6ab8-4ac1-afba-643ee1f6e29d
+templateId: 2168e0c1-186b-4952-ae36-9b93af4f4a35
+materialization: table
+isSource: false
+columns:
+  - name: id
+    dataType: id
+    allowNulls: false
+    defaultValue: ''
+    description: ''
+    id: 86745049-22b2-429a-9454-128cfe1baf8e
+  - name: name
+    dataType: varchar(50)
+    allowNulls: false
+    defaultValue: ''
+    description: ''
+    id: 51c5ee43-c1c6-419d-9818-7af7b8c28619
+  - name: __load_date
+    dataType: date
+    allowNulls: false
+    defaultValue: current_date()
+    description: load date
+    id: 09a3f4a6-2469-4d10-b456-28c5c5952570
+columnSets:
+  - id: 304e064d-00fd-42c3-887e-a1828984f877
+    itemName: PK
+    setName: PK_stg_sometable_1
+    columns:
+      - columnId: 86745049-22b2-429a-9454-128cfe1baf8e
+        position: 1
+        name: id
+nodeFormat: dynamic
+preCreate: ''
+postCreate: ''
+preRun: ''
+postRun: ''
+rely_button: true
+color: '#8E44AD'
+logic: |-
+  SELECT
+      sometable.id AS "id",
+      sometable.name AS "name",
+      current_date() AS "__load_d"
+  FROM {{ref('My Location', 'sometable')}} "sometable"
+description: ''
+logicalName: sometable dimension
+references:
+  418691fe-03ec-4af3-82cc-8e77d04b8734:
+    parentTableId: f41e6079-6913-4668-8b14-8127f73143b5
+    id: 418691fe-03ec-4af3-82cc-8e77d04b8734
